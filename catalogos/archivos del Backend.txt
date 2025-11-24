@@ -1,0 +1,157 @@
+Aquí tienes los archivos del Backend (Python/Flask) listos para funcionar con la lógica de IA que definimos.
+
+1. backend/app.py (El Servidor)
+Este es el archivo que tu agente debe crear. Contiene:
+
+Conexión a Gemini: Configurada para recibir tu API Key.
+
+Endpoint /api/ia/chat_apu: Recibe la descripción de la obra, construye el prompt experto (con cálculo de cantidades) y devuelve el JSON para la tabla de Análisis.
+
+Endpoint /api/ia/cotizar: Recibe un material y devuelve los 3 precios de mercado para el Comparador.
+---------------------------------------------------------------------------------------------------------------------------
+backend/app.py
+
+import os
+import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import google.generativeai as genai
+
+# --- CONFIGURACIÓN ---
+app = Flask(__name__)
+CORS(app)  # Permite que tu frontend (React) hable con este backend
+
+# Configura tu API Key de Google Gemini aquí
+# Opción A: Desde variable de entorno (Recomendado)
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Opción B: Directa (Solo para pruebas locales)
+GEMINI_API_KEY = "TU_API_KEY_DE_GEMINI_AQUI" 
+
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Configuración del modelo
+generation_config = {
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "application/json",
+}
+
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-flash", # Modelo rápido y económico
+  generation_config=generation_config,
+)
+
+# --- PROMPTS DEL SISTEMA (Tus reglas de negocio) ---
+
+SYSTEM_PROMPT_APU = """
+Actúa como un experto analista de costos de construcción en México.
+Genera una matriz de Precios Unitarios (APU) detallada.
+
+REGLAS OBLIGATORIAS DE RESPUESTA (JSON):
+1. "cantidad_obra_detectada": Si la descripción incluye dimensiones (ej. "Muro 10x3", "Losa de 50m2"), calcula el total matemático. Si no, devuelve null.
+2. "unidad_obra_detectada": La unidad resultante (m2, m3, ml).
+3. "tipo_documento": Clasifica si es "Presupuesto" (formal), "Nota de Venta" (simple) o "Factura".
+4. "insumos": Lista de materiales/mano de obra.
+   - "tipo_insumo": SOLO usa: "Material", "Mano de Obra", "Equipo", "Maquinaria".
+   - "unidad": SOLO usa: "pza", "m2", "m3", "ml", "kg", "ton", "litro", "galon", "bulto", "caja", "lote", "jor", "hr", "dia".
+   - "cantidad": Coeficiente técnico para 1 unidad de obra (no el total).
+   - "merma": Decimal (ej. 0.05 para 5%).
+   - "precio_unitario": Inicializa siempre en 0 (el usuario lo cotiza después).
+
+Tu respuesta debe ser EXCLUSIVAMENTE el objeto JSON.
+"""
+
+SYSTEM_PROMPT_COTIZADOR = """
+Actúa como un experto en compras de materiales de construcción en México.
+El usuario te dará un nombre de material. Tu misión es estimar 3 precios de mercado realistas (Bajo, Promedio, Alto).
+Devuelve un JSON con esta estructura exacta:
+{
+  "tienda1": "Nombre Tienda Genérica A", "precio1": 100.00,
+  "tienda2": "Nombre Tienda Genérica B", "precio2": 95.00,
+  "tienda3": "Nombre Tienda Genérica C", "precio3": 110.00
+}
+"""
+
+# --- ENDPOINTS (Rutas) ---
+
+@app.route('/api/ia/chat_apu', methods=['POST'])
+def generar_apu():
+    try:
+        data = request.json
+        descripcion = data.get('descripcion', '')
+        
+        if not descripcion:
+            return jsonify({"error": "Falta descripción"}), 400
+
+        # Construir el prompt final
+        prompt = f"{SYSTEM_PROMPT_APU}\n\nCONCEPTO A ANALIZAR: {descripcion}"
+        
+        # Llamar a Gemini
+        response = model.generate_content(prompt)
+        
+        # Parsear respuesta (Gemini devuelve JSON string)
+        resultado_json = json.loads(response.text)
+        
+        return jsonify(resultado_json)
+
+    except Exception as e:
+        print(f"Error en IA: {e}")
+        return jsonify({
+            "explicacion": "Hubo un error al conectar con la IA. Intenta de nuevo.",
+            "insumos": []
+        }), 500
+
+@app.route('/api/ia/cotizar', methods=['POST'])
+def cotizar_material():
+    try:
+        data = request.json
+        material = data.get('material', '')
+        
+        if not material:
+            return jsonify({"error": "Falta material"}), 400
+
+        prompt = f"{SYSTEM_PROMPT_COTIZADOR}\n\nMATERIAL A COTIZAR: {material}"
+        
+        response = model.generate_content(prompt)
+        resultado_json = json.loads(response.text)
+        
+        return jsonify(resultado_json)
+
+    except Exception as e:
+        print(f"Error cotizando: {e}")
+        return jsonify({
+            "tienda1": "Error IA", "precio1": 0,
+            "tienda2": "-", "precio2": 0,
+            "tienda3": "-", "precio3": 0
+        }), 500
+
+# --- INICIO DEL SERVIDOR ---
+if __name__ == '__main__':
+    print("🚀 Servidor Backend APU Builder corriendo en http://localhost:8000")
+    app.run(port=8000, debug=True)
+--------------------------------------------------------------------------------------------------------------------------------------------
+2. backend/requirements.txt
+Tu agente necesitará instalar estas librerías para que el código de arriba funcione.
+--------------------------------------------------------------------------------------------------------------------------------------
+backend/requirements.txt
+
+flask
+flask-cors
+google-generativeai
+------------------------------------------------------------------------------------------------------------------------------------------------
+3. Actualización Final: AnalisisPuPage.tsx con Fetch Real
+Ahora que tenemos el backend, actualizamos el Frontend para que deje de usar el setTimeout (simulación) y llame de verdad a http://localhost:8000/api/ia/chat_apu.
+
+Pasos para tu Agente:
+
+Crear la carpeta backend y dentro app.py y requirements.txt.
+
+Reemplazar el contenido de AnalisisPuPage.tsx con este último bloque de código.
+
+Instalar dependencias (pip install -r backend/requirements.txt).
+
+Correr el servidor (python backend/app.py).
+
+¡Y listo! Tendrás tu sistema APU Builder totalmente funcional y con inteligencia real.
