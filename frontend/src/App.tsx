@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import AnalisisPuPage from './pages/AnalisisPuPage';
+import { AnalisisPuPage } from './pages/AnalisisPuPage';
 import CatalogoPage from './pages/CatalogoPage';
 import ComparadorPage from './pages/ComparadorPage';
 import LoginPage from './pages/LoginPage';
