@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 
 import google.generativeai as genai
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, current_app, send_file
+from flask import Flask, jsonify, request, current_app, send_file, session
 import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -24,17 +24,38 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data.sqlite3")
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}" 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-secret")
+app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "True").lower() == "true"
+
+
+def get_allowed_origins() -> List[str]:
+    """Return a list of allowed origins for CORS based on the environment."""
+    origins_env = os.environ.get("ALLOWED_ORIGINS")
+    if origins_env:
+        return [origin.strip() for origin in origins_env.split(",") if origin.strip()]
+    return [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "https://f-apuu-dywz.vercel.app",
+        "https://f-apuu-projects.vercel.app",
+    ]
+
 
 db = SQLAlchemy(app)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/api/*": {"origins": get_allowed_origins()}}, supports_credentials=True)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Días para considerar un precio como obsoleto (configurable)
 PRECIOS_OBSOLETOS_DIAS = int(os.environ.get("PRECIOS_OBSOLETOS_DIAS", "90"))
+
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
@@ -349,6 +370,34 @@ def init_db():
     os.makedirs(BASE_DIR, exist_ok=True)
     db.create_all()
     ConstantesFASAR.get_singleton()
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    payload = request.get_json(silent=True) or {}
+    username = (payload.get("username") or "").strip()
+    password = payload.get("password") or ""
+
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        user_info = {"id": 1, "username": username, "is_admin": True}
+        session["user"] = user_info
+        return jsonify({"message": "Inicio de sesión exitoso", "user": user_info})
+
+    return jsonify({"error": "Credenciales incorrectas"}), 401
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def auth_me():
+    user = session.get("user")
+    if not user:
+        return jsonify({"error": "No autenticado"}), 401
+    return jsonify(user)
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    session.pop("user", None)
+    return jsonify({"message": "Sesión cerrada"})
 
 
 @app.route("/api/ventas/crear_nota_venta", methods=["POST"])
