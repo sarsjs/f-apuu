@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/backend/run.py", line 6, in <module>
+    app = create_app()
+          ^^^^^^^^^^^^
+  File "/app/backend/app/__init__.py", line 19, in create_app
+    from .routes import auth, catalogos, conceptos, proyectos, ventas, ia
+  File "/app/backend/app/routes/conceptos.py", line 4, in <module>
+    from backend.app.services.calculation_service import calcular_precio_unitario, normalizar_factores
+  File "/app/backend/app/services/calculation_service.py", line 3, in <module>
+    from backend.app.models import ConstantesFASAR, Material, ManoObra, Equipo, Maquinaria, MatrizIno, Proyecto
+ImportError: cannot import name 'MatrizIno' from 'backend.app.models' (/app/backend/app/models.py). Did you mean: 'MatrizInsumo'?

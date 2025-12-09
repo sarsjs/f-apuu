@@ -1,92 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AnalisisPuPage } from './pages/AnalisisPuPage';
+import { Toaster } from 'react-hot-toast';
+import AnalisisPuPage from './pages/AnalisisPuPage';
 import CatalogoPage from './pages/CatalogoPage';
-import ComparadorPage from './pages/ComparadorPage';
 import LoginPage from './pages/LoginPage';
-import AdminDashboard from './pages/AdminDashboard';
-import { API_BASE_URL } from './api/client';
+import ComparadorPage from './pages/ComparadorPage'; // Restaurado
+import AdminDashboard from './pages/AdminDashboard'; // Restaurado
 import { UserInfo } from './types/user';
 import { UserContext } from './context/user';
+import { apiFetch } from './api/client';
 
 function App() {
     const [user, setUser] = useState<UserInfo | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isChecking, setIsChecking] = useState(true);
-    const isAdmin = Boolean(user?.is_admin);
 
     useEffect(() => {
-        let isMounted = true;
-
         const checkAuth = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/auth/me`, {
-                    credentials: 'include',
-                });
-                if (!isMounted) return;
-                if (response.ok) {
-                    const data = await response.json();
-                    setUser(data);
-                    setIsAuthenticated(true);
-                } else {
-                    setUser(null);
-                    setIsAuthenticated(false);
-                }
+                const data = await apiFetch<UserInfo>({ url: '/auth/me' });
+                setUser(data);
             } catch (error) {
-                console.error('Error verificando sesión:', error);
-                if (isMounted) {
-                    setUser(null);
-                    setIsAuthenticated(false);
-                }
+                setUser(null);
             } finally {
-                if (isMounted) {
-                    setIsChecking(false);
-                }
+                setIsChecking(false);
             }
         };
-
         checkAuth();
-
-        return () => {
-            isMounted = false;
-        };
     }, []);
 
-    const handleLogin = (userInfo: UserInfo) => {
-        setUser(userInfo);
-        setIsAuthenticated(true);
-    };
-
-    if (isChecking) return null;
+    if (isChecking) return <div>Cargando...</div>;
 
     return (
         <UserContext.Provider value={user}>
+            <Toaster position="top-right" />
             <Routes>
-                <Route
-                    path="/login"
-                    element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/analisis" replace />}
-                />
-                <Route
-                    path="/analisis"
-                    element={isAuthenticated ? <AnalisisPuPage /> : <Navigate to="/login" replace />}
-                />
-                <Route
-                    path="/catalogo"
-                    element={isAuthenticated ? <CatalogoPage /> : <Navigate to="/login" replace />}
-                />
-                <Route
-                    path="/comparador"
-                    element={isAuthenticated ? <ComparadorPage /> : <Navigate to="/login" replace />}
-                />
-                <Route
-                    path="/admin"
-                    element={isAuthenticated && isAdmin ? <AdminDashboard /> : <Navigate to="/analisis" replace />}
-                />
-                <Route path="/" element={<Navigate to="/analisis" replace />} />
-                <Route path="*" element={<Navigate to="/analisis" replace />} />
+                <Route path="/login" element={!user ? <LoginPage onLogin={setUser} /> : <Navigate to="/catalogo" replace />} />
+
+                {/* Rutas Protegidas */}
+                <Route path="/catalogo" element={user ? <CatalogoPage /> : <Navigate to="/login" replace />} />
+                <Route path="/analisis" element={user ? <AnalisisPuPage /> : <Navigate to="/login" replace />} />
+                <Route path="/comparador" element={user ? <ComparadorPage /> : <Navigate to="/login" replace />} />
+                <Route path="/admin" element={user && user.is_admin ? <AdminDashboard /> : <Navigate to="/catalogo" replace />} />
+
+                <Route path="/" element={<Navigate to="/catalogo" replace />} />
+                <Route path="*" element={<Navigate to="/catalogo" replace />} />
             </Routes>
         </UserContext.Provider>
     );
 }
-
 export default App;

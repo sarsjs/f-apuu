@@ -435,3 +435,5 @@ export function AnalisisPuPage() {
         </section>
     );
 }
+
+export default AnalisisPuPage;
