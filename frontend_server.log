@@ -1,0 +1,11 @@
+
+> precios-unitarios-frontend@0.1.0 dev
+> vite --port 3000
+
+Port 3000 is in use, trying another one...
+Port 3001 is in use, trying another one...
+
+  VITE v5.4.21  ready in 382 ms
+
+  ➜  Local:   http://localhost:3002/
+  ➜  Network: use --host to expose
