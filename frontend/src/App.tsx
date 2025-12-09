@@ -6,6 +6,7 @@ import CatalogoPage from './pages/CatalogoPage';
 import LoginPage from './pages/LoginPage';
 import ComparadorPage from './pages/ComparadorPage'; // Restaurado
 import AdminDashboard from './pages/AdminDashboard'; // Restaurado
+import DashboardPage from './pages/DashboardPage'; // Nueva página
 import { UserInfo } from './types/user';
 import { UserContext } from './context/user';
 import { apiFetch } from './api/client';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/analisis" element={user ? <AnalisisPuPage /> : <Navigate to="/login" replace />} />
                 <Route path="/comparador" element={user ? <ComparadorPage /> : <Navigate to="/login" replace />} />
                 <Route path="/admin" element={user && user.is_admin ? <AdminDashboard /> : <Navigate to="/catalogo" replace />} />
+                <Route path="/dashboard/:projectId" element={user ? <DashboardPage /> : <Navigate to="/login" replace />} />
 
                 <Route path="/" element={<Navigate to="/catalogo" replace />} />
                 <Route path="*" element={<Navigate to="/catalogo" replace />} />
