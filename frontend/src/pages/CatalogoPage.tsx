@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Tabs, Tab, Box, Button, Paper, Typography, IconButton } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Dashboard as DashboardIcon } from '@mui/icons-material';
 import { DataGrid, type GridColDef, type GridRowParams } from '@mui/x-data-grid';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api/client';
 import toast from 'react-hot-toast';
 // (El resto del contenido final de CatalogoPage.tsx, incluyendo el modal)
@@ -19,6 +20,7 @@ const TABS_CONFIG = {
 };
 
 export default function CatalogoPage() {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<TabKey>('materiales');
     const [data, setData] = useState<Insumo[]>([]);
     const [loading, setLoading] = useState(false);

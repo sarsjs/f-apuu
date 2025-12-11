@@ -23,4 +23,6 @@ def create_app(config_class=Config):
         app.register_blueprint(proyectos.proyectos_bp, url_prefix='/api')
         app.register_blueprint(ventas.ventas_bp, url_prefix='/api/ventas')
         app.register_blueprint(ia.ia_bp, url_prefix='/api/ia')
-        return app
+        from .routes.dashboard import dashboard_bp
+        app.register_blueprint(dashboard_bp, url_prefix='/api')
+    return app
